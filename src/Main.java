@@ -1,3 +1,4 @@
+import java.util.List;
 import java.util.Scanner;
 
 public class Main {
@@ -5,6 +6,7 @@ public class Main {
     private static final String QUIT = "quit";
     private static final String PROCESS_FILE = "process-file";
     private static final String QUERY = "query";
+    private static final int QUERY_LIMIT = 10;
     private static final MovieIndex INDEX = new TernaryTreeMovieIndex();
 
     public static void main(String[] args) {
@@ -29,8 +31,11 @@ public class Main {
                 INDEX.index(new MovieFileReader(arg));
                 return;
             case QUERY:
-                // TODO
-                throw new RuntimeException("not implemented");
+                List<Movie> matches = INDEX.query(arg, QUERY_LIMIT);
+                for (Movie movie : matches) {
+                    System.out.println(movie);
+                }
+                return;
             default:
                 throw new IllegalArgumentException("Invalid directive: " + directive);
         }

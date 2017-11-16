@@ -22,7 +22,7 @@ public class MovieFileReader implements MovieReader {
      *
      * @param file file path to read from
      */
-    public MovieFileReader(String file) {
+    MovieFileReader(String file) {
         fileName = file;
     }
 

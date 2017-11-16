@@ -13,6 +13,10 @@ public class Movie {
         this.releaseYear = releaseYear;
     }
 
+    public String getTitle() {
+        return title;
+    }
+
     @Override
     public String toString() {
         return String.format("%d\t%s\t%s", releaseYear, countryCode, title);
