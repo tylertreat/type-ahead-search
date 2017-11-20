@@ -9,7 +9,9 @@ import java.util.concurrent.Executors;
 
 /**
  * {@code TernaryTreeMovieIndex} implements the {@link MovieIndex} interface by using a fixed-size thread pool to
- * asynchronously index Movies and storing them in a ternary search tree.
+ * asynchronously index Movies and storing them in a ternary search tree. This is thread-safe in that multiple indexing
+ * operations can happen concurrently as well as queries. Internally, this uses synchronization to achieve this. This
+ * could be made more efficient by using CAS operations instead.
  */
 public class TernaryTreeMovieIndex implements MovieIndex {
 
@@ -58,6 +60,9 @@ public class TernaryTreeMovieIndex implements MovieIndex {
 
     }
 
+    /**
+     * Inserts a word into the tree for the given {@code Movie}.
+     */
     private synchronized void insert(String word, Movie movie) {
         if (word == null || word.length() == 0) {
             return;
@@ -98,6 +103,9 @@ public class TernaryTreeMovieIndex implements MovieIndex {
         return n;
     }
 
+    /**
+     * Performs a prefix-match lookup for the given query on the tree.
+     */
     private synchronized List<Movie> prefixMatches(String query) {
         // Prefix match on each word in the query.
         String[] words = query.split(" ");
