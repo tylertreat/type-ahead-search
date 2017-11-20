@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * {@code TernaryTreeMovieIndex} implements the {@link MovieIndex} interface by using a fixed-size thread pool to
@@ -21,8 +22,8 @@ public class TernaryTreeMovieIndex implements MovieIndex {
     private Node<Movie> root;
 
     @Override
-    public void index(MovieReader reader) {
-        executor.execute(() -> {
+    public Future<?> index(MovieReader reader) {
+        return executor.submit(() -> {
             try (reader) {
                 reader.open();
                 while (reader.hasNext()) {
@@ -121,7 +122,8 @@ public class TernaryTreeMovieIndex implements MovieIndex {
         // Take the intersection of the prefix matches, e.g. query "part II" should match
         // "The Hangover Part II" but not "Harry Potter and the Deathly Hollows Part 1". NOTE: this may not be entirely
         // correct depending on desired behavior. For example, query "guardians of" matches both "Guardians of the
-        // Galaxy" and "Rise of the Guardians" since both words are contained in the titles but in different orders.
+        // Galaxy" and "Rise of the Guardians" since both words are contained in the titles but in different orders. We
+        // do it this way for now since we want to allow prefix matching of any words in the title.
         Set<Movie> intersection = matches[0];
         for (int i = 1; i < matches.length; i++) {
             intersection.retainAll(matches[i]);
