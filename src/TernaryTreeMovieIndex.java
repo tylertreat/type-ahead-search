@@ -25,6 +25,7 @@ public class TernaryTreeMovieIndex implements MovieIndex {
                 reader.open();
                 while (reader.hasNext()) {
                     Movie movie = reader.next();
+                    // Index each word in the title.
                     for (String word : movie.getTitle().split(" ")) {
                         insert(word.toLowerCase(), movie); // Normalize to lower case.
                     }
@@ -45,19 +46,18 @@ public class TernaryTreeMovieIndex implements MovieIndex {
     private class Node<E> {
 
         private final char c;
+        private final Set<E> items = new HashSet<>(0);
 
         private Node<E> left;
         private Node<E> down;
         private Node<E> right;
-        private E item;
 
-        Node(char c, E item) {
+        Node(char c) {
             this.c = c;
-            this.item = item;
         }
 
     }
-
+    
     private void insert(String word, Movie movie) {
         if (word == null || word.length() == 0) {
             return;
@@ -71,7 +71,7 @@ public class TernaryTreeMovieIndex implements MovieIndex {
 
     private Node<Movie> insertRec(Node<Movie> n, String word, Movie movie, int idx) {
         if (n == null) {
-            n = new Node<>(word.charAt(idx), null);
+            n = new Node<>(word.charAt(idx));
         }
 
         if (word.charAt(idx) < n.c) {
@@ -86,7 +86,7 @@ public class TernaryTreeMovieIndex implements MovieIndex {
             }
         } else {
             if (idx + 1 == word.length()) {
-                n.item = movie;
+                n.items.add(movie);
             } else {
                 Node<Movie> down = insertRec(n.down, word, movie, idx + 1);
                 if (n.down == null) {
@@ -98,63 +98,82 @@ public class TernaryTreeMovieIndex implements MovieIndex {
         return n;
     }
 
-    private List<Movie> prefixMatches(String title) {
-        String[] words = title.split(" ");
-        Set<Movie> matches = new HashSet<>();
-        for (String word : words) {
-            matches.addAll(wordPrefixMatches(word));
+    private List<Movie> prefixMatches(String query) {
+        // Prefix match on each word in the query.
+        String[] words = query.split(" ");
+        @SuppressWarnings({"unchecked"})
+        Set<Movie>[] matches = new Set[words.length];
+        for (int i = 0; i < words.length; i++) {
+            matches[i] = wordPrefixMatches(words[i]);
         }
-        return new ArrayList<>(matches);
+        if (matches.length == 0) {
+            return new ArrayList<>(0);
+        }
+
+        // Take the intersection of the prefix matches, e.g. query "part II" should match
+        // "The Hangover Part II" but not "Harry Potter and the Deathly Hollows Part 1". NOTE: this may not be entirely
+        // correct depending on desired behavior. For example, query "guardians of" matches both "Guardians of the
+        // Galaxy" and "Rise of the Guardians" since both words are contained in the titles but in different orders.
+        Set<Movie> intersection = matches[0];
+        for (int i = 1; i < matches.length; i++) {
+            intersection.retainAll(matches[i]);
+        }
+        return new ArrayList<>(intersection);
     }
 
-    private List<Movie> wordPrefixMatches(String word) {
-        List<Movie> matches = new ArrayList<>();
+    private Set<Movie> wordPrefixMatches(String word) {
+        Set<Movie> matches = new HashSet<>();
         if (word == null || word.length() == 0) {
             return matches;
         }
 
         Node<Movie> curr = root;
-        Node<Movie> last = root;
+        Node<Movie> last = null;
+        int idx = 0;
 
         if (curr == null) {
             return matches;
         }
 
         // Descend to the last node in the tree whose prefix matches the word.
-        for (int idx = 0; idx < word.length(); idx++) {
-            System.out.printf("%d: %s, %s\n", idx, word.charAt(idx), curr.c);
+        while (true) {
             if (word.charAt(idx) < curr.c) {
                 if (curr.left == null) {
-                    last = curr;
                     break;
                 }
                 curr = curr.left;
             } else if (word.charAt(idx) > curr.c) {
                 if (curr.right == null) {
-                    last = curr;
                     break;
                 }
                 curr = curr.right;
             } else {
-                if (idx + 1 == word.length() || curr.down == null) {
-                    last = curr;
+                if (++idx == word.length() || curr.down == null) {
+                    if (idx == word.length()) {
+                        last = curr;
+                    }
                     break;
                 }
                 curr = curr.down;
             }
         }
 
-        // At this point, any children of the last node are matches.
-        traverseRec(last, matches);
+        if (last == null) {
+            return matches;
+        } else if (!last.items.isEmpty()) {
+            matches.addAll(last.items);
+        }
+        // At this point, follow all children of the "down" node to find prefix matches.
+        traverseRec(last.down, matches);
         return matches;
     }
 
-    private void traverseRec(Node<Movie> curr, List<Movie> matches) {
+    private void traverseRec(Node<Movie> curr, Set<Movie> matches) {
         if (curr == null) {
             return;
         }
-        if (curr.item != null) {
-            matches.add(curr.item);
+        if (!curr.items.isEmpty()) {
+            matches.addAll(curr.items);
         }
         traverseRec(curr.left, matches);
         traverseRec(curr.down, matches);

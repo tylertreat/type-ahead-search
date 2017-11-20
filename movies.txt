@@ -1,3 +1,6 @@
+1999	US	The Matrix
+2003	US	The Matrix Reloaded
+2003	US	The Matrix Revolutions
 2008	US	Starship Troopers 3
 2008	UK	Naming Pluto
 2009	DE	Audi Star Talk
@@ -11,6 +14,7 @@
 2010	US	Tangled
 2010	US	Despicable Me
 2010	US	How to Train Your Dragon
+2010	AU	Legend of the Guardians: The Owls of Ga'Hoole
 2011	US	Harry Potter and the Deathly Hollows Part 2
 2011	US	Transformers: Dark of the Moon
 2011	US	Pirates of the Caribbean: On Stranger Tides
@@ -20,3 +24,5 @@
 2011	US	The Hangover Part II
 2011	US	The Smurfs
 2011	US	Cars 2
+2012	US	Rise of the Guardians
+2014	US	Guardians of the Galaxy
