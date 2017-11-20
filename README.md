@@ -4,25 +4,32 @@ Simple type-ahead search implementation.
 
 ## Build
 
-There is a makefile included for building an executable JAR in the `src`
-directory. The following command shows how to build and run the JAR:
+This project uses Maven for managing builds and testing. First, ensure
+[Maven](https://maven.apache.org/) is installed.
+
+To run the unit tests and build the executable JAR, run the following from the
+root project directory:
 
 ```
-$ cd src
-$ make jar
-$ java -jar search.jar
+$ mvn clean install
 ```
 
-We can also just compile the classes and execute this way:
+This will produce an executable JAR in the `target` directory, which can then
+be run with the following:
 
 ```
-$ cd src
-$ make compile
-$ java Main
+$ java -jar target/type-ahead-search-1.0-SNAPSHOT-jar-with-dependencies.jar
+```
+
+You can also execute the compiled class files, located in `target/classes`,
+using the following:
+
+```
+$ java -cp target/classes Main
 ```
 
 Clean up artifacts with the following command:
 
 ```
-$ make clean
+$ mvn clean
 ```
