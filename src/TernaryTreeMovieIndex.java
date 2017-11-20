@@ -57,8 +57,8 @@ public class TernaryTreeMovieIndex implements MovieIndex {
         }
 
     }
-    
-    private void insert(String word, Movie movie) {
+
+    private synchronized void insert(String word, Movie movie) {
         if (word == null || word.length() == 0) {
             return;
         }
@@ -98,7 +98,7 @@ public class TernaryTreeMovieIndex implements MovieIndex {
         return n;
     }
 
-    private List<Movie> prefixMatches(String query) {
+    private synchronized List<Movie> prefixMatches(String query) {
         // Prefix match on each word in the query.
         String[] words = query.split(" ");
         @SuppressWarnings({"unchecked"})
