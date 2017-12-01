@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -7,19 +8,19 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * {@code TernaryTreeMovieIndex} implements the {@link MovieIndex} interface by using a fixed-size thread pool to
  * asynchronously index Movies and storing them in a ternary search tree. This is thread-safe in that multiple indexing
- * operations can happen concurrently as well as queries. Internally, this uses synchronization to achieve this. This
- * could be made more efficient by using CAS operations instead.
+ * operations can happen concurrently as well as queries.
  */
 public class TernaryTreeMovieIndex implements MovieIndex {
 
     private final ExecutorService executor = Executors.newFixedThreadPool(
             Math.max(Runtime.getRuntime().availableProcessors() - 1, 1));
 
-    private Node<Movie> root;
+    private final AtomicReference<Node<Movie>> root = new AtomicReference<>();
 
     @Override
     public Future<?> index(MovieReader reader) {
@@ -49,11 +50,11 @@ public class TernaryTreeMovieIndex implements MovieIndex {
     private class Node<E> {
 
         private final char c;
-        private final Set<E> items = new HashSet<>(0);
+        private final Set<E> items = Collections.synchronizedSet(new HashSet<>(0));
 
-        private Node<E> left;
-        private Node<E> down;
-        private Node<E> right;
+        private final AtomicReference<Node<E>> left = new AtomicReference<>();
+        private final AtomicReference<Node<E>> down = new AtomicReference<>();
+        private final AtomicReference<Node<E>> right = new AtomicReference<>();
 
         Node(char c) {
             this.c = c;
@@ -64,50 +65,42 @@ public class TernaryTreeMovieIndex implements MovieIndex {
     /**
      * Inserts a word into the tree for the given {@code Movie}.
      */
-    private synchronized void insert(String word, Movie movie) {
+    private void insert(String word, Movie movie) {
         if (word == null || word.length() == 0) {
             return;
         }
-        Node<Movie> n = insertRec(root, word, movie, 0);
-        if (root == null) {
-            root = n;
-        }
-
+        insertRec(root, word, movie, 0);
     }
 
-    private Node<Movie> insertRec(Node<Movie> n, String word, Movie movie, int idx) {
-        if (n == null) {
-            n = new Node<>(word.charAt(idx));
-        }
+    private void insertRec(AtomicReference<Node<Movie>> ref, String word, Movie movie, int idx) {
+        Node<Movie> old;
+        Node<Movie> n;
+        do {
+            old = ref.get();
+            n = old;
 
-        if (word.charAt(idx) < n.c) {
-            Node<Movie> left = insertRec(n.left, word, movie, idx);
-            if (n.left == null) {
-                n.left = left;
+            if (n == null) {
+                n = new Node<>(word.charAt(idx));
             }
-        } else if (word.charAt(idx) > n.c) {
-            Node<Movie> right = insertRec(n.right, word, movie, idx);
-            if (n.right == null) {
-                n.right = right;
-            }
-        } else {
-            if (idx + 1 == word.length()) {
-                n.items.add(movie);
+
+            if (word.charAt(idx) < n.c) {
+                insertRec(n.left, word, movie, idx);
+            } else if (word.charAt(idx) > n.c) {
+                insertRec(n.right, word, movie, idx);
             } else {
-                Node<Movie> down = insertRec(n.down, word, movie, idx + 1);
-                if (n.down == null) {
-                    n.down = down;
+                if (idx + 1 == word.length()) {
+                    n.items.add(movie);
+                } else {
+                    insertRec(n.down, word, movie, idx + 1);
                 }
             }
-        }
-
-        return n;
+        } while (!ref.compareAndSet(old, n));
     }
 
     /**
      * Performs a prefix-match lookup for the given query on the tree.
      */
-    private synchronized List<Movie> prefixMatches(String query) {
+    private List<Movie> prefixMatches(String query) {
         // Prefix match on each word in the query.
         String[] words = query.split(" ");
         @SuppressWarnings({"unchecked"})
@@ -137,7 +130,7 @@ public class TernaryTreeMovieIndex implements MovieIndex {
             return matches;
         }
 
-        Node<Movie> curr = root;
+        Node<Movie> curr = root.get();
         Node<Movie> last = null;
         int idx = 0;
 
@@ -148,23 +141,26 @@ public class TernaryTreeMovieIndex implements MovieIndex {
         // Descend to the last node in the tree whose prefix matches the word.
         while (true) {
             if (word.charAt(idx) < curr.c) {
-                if (curr.left == null) {
+                Node<Movie> left = curr.left.get();
+                if (left == null) {
                     break;
                 }
-                curr = curr.left;
+                curr = left;
             } else if (word.charAt(idx) > curr.c) {
-                if (curr.right == null) {
+                Node<Movie> right = curr.right.get();
+                if (right == null) {
                     break;
                 }
-                curr = curr.right;
+                curr = right;
             } else {
-                if (++idx == word.length() || curr.down == null) {
+                Node<Movie> down = curr.down.get();
+                if (++idx == word.length() || down == null) {
                     if (idx == word.length()) {
                         last = curr;
                     }
                     break;
                 }
-                curr = curr.down;
+                curr = down;
             }
         }
 
@@ -174,7 +170,7 @@ public class TernaryTreeMovieIndex implements MovieIndex {
             matches.addAll(last.items);
         }
         // At this point, follow all children of the "down" node to find prefix matches.
-        traverseRec(last.down, matches);
+        traverseRec(last.down.get(), matches);
         return matches;
     }
 
@@ -185,8 +181,8 @@ public class TernaryTreeMovieIndex implements MovieIndex {
         if (!curr.items.isEmpty()) {
             matches.addAll(curr.items);
         }
-        traverseRec(curr.left, matches);
-        traverseRec(curr.down, matches);
-        traverseRec(curr.right, matches);
+        traverseRec(curr.left.get(), matches);
+        traverseRec(curr.down.get(), matches);
+        traverseRec(curr.right.get(), matches);
     }
 }
