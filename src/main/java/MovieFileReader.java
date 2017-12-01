@@ -32,13 +32,13 @@ public class MovieFileReader implements MovieReader {
      *
      * @throws FileNotFoundException if the file does not exist
      */
-    public void open() throws FileNotFoundException {
+    public synchronized void open() throws FileNotFoundException {
         reader = new BufferedReader(new FileReader(fileName));
         open = true;
     }
 
     @Override
-    public boolean hasNext() {
+    public synchronized boolean hasNext() {
         if (!open) {
             throw new IllegalStateException("MovieFileReader not open");
         }
@@ -52,7 +52,7 @@ public class MovieFileReader implements MovieReader {
     }
 
     @Override
-    public Movie next() {
+    public synchronized Movie next() {
         if (!open) {
             throw new IllegalStateException("MovieFileReader not open");
         }
@@ -83,7 +83,7 @@ public class MovieFileReader implements MovieReader {
     }
 
     @Override
-    public void close() throws IOException {
+    public synchronized void close() throws IOException {
         if (!open) {
             return;
         }
