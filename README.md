@@ -1,6 +1,6 @@
 # type-ahead-search
 
-Toy type-ahead search implementation.
+Toy type-ahead search implementation using a ternary search tree.
 
 ## Build
 
