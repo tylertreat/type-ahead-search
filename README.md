@@ -1,6 +1,6 @@
 # type-ahead-search
 
-Simple type-ahead search implementation.
+Toy type-ahead search implementation.
 
 ## Build
 
